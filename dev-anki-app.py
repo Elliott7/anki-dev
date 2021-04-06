@@ -19,8 +19,12 @@ Note: Queries in class are hardcoded
 Note: DB details are hardcoded in setupUi
 
 Functionality to add:
+To do next - Add button to add questions and answers directly into database
 Individual login verification
 Hosted DB that doesn't require user to look after it
+Add an ending and proper starting screen
+Add a tracking & shuffling algo for long term memory retention. (Current interval selection is based on times selected below)
+
 
 """
 
@@ -31,12 +35,14 @@ class Ui_MainWindow():
         MainWindow.resize(744, 524)
         self.colouring()
         self.add_buttons()
-        self.db = self.create_server_connection(secrets.db_host, secrets.db_username, secrets.db_password, "mycodingquestions")
-        if self.db:
+        self.db = self.db2 = self.create_server_connection(secrets.db_host, secrets.db_username, secrets.db_password, "mycodingquestions")
+        if self.db and self.db2:
             self.mycursor = self.db.cursor()
+            self.mycursor2 = self.db2.cursor()
         else:
             # TODO create POP UP - enter database details/login to said account
             pass
+
 
         self.again_interval = 0.8
         self.hard_interval = 1.2
@@ -78,7 +84,7 @@ class Ui_MainWindow():
         self.again_button = QtWidgets.QPushButton(self.centralwidget)
         self.again_button.setGeometry(QtCore.QRect(140, 410, 101, 31))
         self.again_button.setObjectName("again_button")
-        self.again_button.clicked.connect(lambda: self.easy_clicked("update"))  ## not needed
+        self.again_button.clicked.connect(lambda: self.again_button_click())
             # LABEL
         self.again_label = QtWidgets.QLabel(self.centralwidget)
         self.again_label.setGeometry(QtCore.QRect(140, 390, 101, 20))
@@ -90,7 +96,7 @@ class Ui_MainWindow():
         self.easy_button = QtWidgets.QPushButton(self.centralwidget)
         self.easy_button.setGeometry(QtCore.QRect(500, 410, 101, 31))
         self.easy_button.setObjectName("easy_button")
-        # self.easy_button.clicked.connect(lambda: self.update_buttons()) ## not needed
+        self.easy_button.clicked.connect(lambda: self.easy_button_click())
                 
             # LABEL
         self.easy_label = QtWidgets.QLabel(self.centralwidget)
@@ -103,6 +109,7 @@ class Ui_MainWindow():
         self.good_button = QtWidgets.QPushButton(self.centralwidget)
         self.good_button.setGeometry(QtCore.QRect(380, 410, 101, 31))
         self.good_button.setObjectName("good_button")
+        self.good_button.clicked.connect(lambda: self.good_button_click())
             # LABEL
         self.good_label = QtWidgets.QLabel(self.centralwidget)
         self.good_label.setGeometry(QtCore.QRect(380, 390, 101, 20))
@@ -113,6 +120,7 @@ class Ui_MainWindow():
         self.hard_button = QtWidgets.QPushButton(self.centralwidget)
         self.hard_button.setGeometry(QtCore.QRect(260, 410, 101, 31))
         self.hard_button.setObjectName("hard_button")
+        self.hard_button.clicked.connect(lambda: self.hard_button_click())
             # LABEL
         self.hard_label = QtWidgets.QLabel(self.centralwidget)
         self.hard_label.setGeometry(QtCore.QRect(260, 390, 101, 20))
@@ -155,29 +163,29 @@ class Ui_MainWindow():
         #MainWindow.setStatusBar(self.statusbar)
         self.menubar.addAction(self.menuFile.menuAction())
 
-        # CLEAR Button
-        self.clear = QtWidgets.QPushButton(self.centralwidget)
-        self.clear.setGeometry(QtCore.QRect(10, 280, 101, 23))
-        self.clear.setObjectName("clear")
-        self.clear.clicked.connect(lambda: self.clear_text())
+        # CLEAR Button - this button will also be removed
+        #self.clear = QtWidgets.QPushButton(self.centralwidget)
+        #self.clear.setGeometry(QtCore.QRect(10, 280, 101, 23))
+        #self.clear.setObjectName("clear")
+        #self.clear.clicked.connect(lambda: self.clear_text())
 
         # CHECK
         self.check_answer = QtWidgets.QPushButton(self.centralwidget)
-        self.check_answer.setGeometry(QtCore.QRect(620, 250, 101, 21))
+        self.check_answer.setGeometry(QtCore.QRect(620, 300, 101, 21))
         self.check_answer.setObjectName("check_answer")
         self.check_answer.clicked.connect(lambda: self.retrieve_response())  ##Here
 
         # SHOW ANSWER
         self.show_answer = QtWidgets.QPushButton(self.centralwidget)
-        self.show_answer.setGeometry(QtCore.QRect(620, 280, 101, 23))
+        self.show_answer.setGeometry(QtCore.QRect(620, 260, 101, 23))
         self.show_answer.setObjectName("show_answer")
         self.show_answer.clicked.connect(lambda: self.show_actual_answer())
         
         # NEXT QUESTION
-        self.next_question = QtWidgets.QPushButton(self.centralwidget)
-        self.next_question.setGeometry(QtCore.QRect(620, 310, 101, 23))
-        self.next_question.setObjectName("next_question")
-        self.next_question.clicked.connect(lambda: self.next_click()) ## TEST FUNCTION
+        #self.next_question = QtWidgets.QPushButton(self.centralwidget)
+        #self.next_question.setGeometry(QtCore.QRect(620, 310, 101, 23))
+        #self.next_question.setObjectName("next_question")
+        #self.next_question.clicked.connect(lambda: self.next_click()) ## TEST FUNCTION - this box will be removed eventually - currently has a breaking bug - known - intented functionality
 
         # ANSWER BOX
         self.answer_box = QtWidgets.QLabel(self.centralwidget)
@@ -214,36 +222,36 @@ class Ui_MainWindow():
         # AGAIN
         self.again_button.setText("Again")
         self.again_button.setShortcut("Ctrl+1")
-        self.again_button.setShortcut("CTRL 1")
-        self.again_label.setText("20 mins e.g.")
+        self.again_button.setToolTip("CTRL 1")
+        #self.again_label.setText("20 mins e.g.")
 
         # EASY
         self.easy_button.setText("Easy")
         self.easy_button.setShortcut("Ctrl+4")
-        self.easy_button.setShortcut("CTRL 4")
-        self.easy_label.setText("4 days e.g.")
+        self.easy_button.setToolTip("CTRL 4")
+        #self.easy_label.setText("4 days e.g.")
 
         # GOOD
         self.good_button.setText("Good")
         self.good_button.setShortcut("Ctrl+3")
-        self.good_button.setShortcut("CTRL 3")
-        self.good_label.setText("1 day e.g.")
+        self.good_button.setToolTip("CTRL 3")
+        #self.good_label.setText("1 day e.g.")
         
         # HARD
         self.hard_button.setText("Hard")
         self.hard_button.setShortcut("Ctrl+2")
-        self.hard_button.setShortcut("CTRL 2")
-        self.hard_label.setText("1 hour e.g.")
+        self.hard_button.setToolTip("CTRL 2")
+        #self.hard_label.setText("1 hour e.g.")
 
         # QUESTION - CORRECT - INCORRECT
-        self.questions_label.setText("Questions to go here")
+        self.questions_label.setText("Press start to begin")
         self.correct_label.setText("Correct: ")
         self.incorrect_label.setText("Incorrect: ")
 
         # CLEAR
-        self.clear.setText("Clear")
-        self.clear.setShortcut("Ctrl+7")
-        self.clear.setToolTip("CTRL 7")
+        #self.clear.setText("Clear")
+        #self.clear.setShortcut("Ctrl+7")
+        #self.clear.setToolTip("CTRL 7")
 
         # CHECK ANSWER
         self.check_answer.setText("Check Answer")
@@ -252,16 +260,16 @@ class Ui_MainWindow():
 
         # SHOW ANSWER
         self.show_answer.setText("Show Answer")
-        self.show_answer.setShortcut("Ctrl+Shift+Return")
-        self.show_answer.setToolTip("CTRL SHIFT ENTER")
+        self.show_answer.setShortcut("Alt+Return")
+        self.show_answer.setToolTip("ALT ENTER")
 
         # NEXT QUESTION
-        self.next_question.setText("Next")
-        self.next_question.setShortcut("Alt+Return")
-        self.next_question.setToolTip("ALT ENTER")
+        #self.next_question.setText("Next")
+        #self.next_question.setShortcut("Alt+Return")
+        #self.next_question.setToolTip("ALT ENTER")
 
         # ANSWER BOX # REMAINING LABEL # START BUTTON # DATABASE CONNECTION
-        self.answer_box.setText("Answer")        
+        self.answer_box.setText("")        
         self.remaining_label.setText("Remaining:")
         self.start_button.setText("Start")
         self.db_connection.setText("Database Connection: ")
@@ -319,40 +327,56 @@ class Ui_MainWindow():
         self.incorrect_label.setStyleSheet("background-color: red")
 
 
+    # This needs some better logic rather than just a 0.8* review - needs to bring it back down to 20mins or so (but not affect the overall timing drastically)
     def again_button_click(self):
-        pass
+        try:
+            self.again_button_interval = self.row[4]*self.again_interval
+            self.update_database_dateincrement(self.again_button_interval)
+            self.next_click(self.again_button_interval)
+        except:
+            pass
 
 
     def hard_button_click(self):
-        pass
-
+        try:
+            self.hard_button_interval = self.row[4]*self.hard_interval
+            self.update_database_dateincrement(self.hard_button_interval)
+            self.next_click(self.hard_button_interval)
+        except:
+            pass        
 
     def good_button_click(self):
-        pass
-
+        try:
+            self.good_button_interval = self.row[4]*self.good_interval
+            self.update_database_dateincrement(self.good_button_interval)
+            self.next_click(self.good_button_interval)
+        except:
+            pass
     
     def easy_button_click(self):
-        pass
+        try:
+            self.easy_button_interval = self.row[4]*self.easy_interval
+            self.update_database_dateincrement(self.easy_button_interval)
+            self.next_click(self.easy_button_interval)
+        except:
+            pass
 
-
-    
-    # A TEST FUNCTION
-    def easy_clicked(self, text):
-        self.easy_label.setText(text)
-
-
-        
-
-    # UPDATES ALL THE BUTTONS WITH THE CURRENT INTERVALS - DB COLUMN NEEDS CHANGING FROM TEST TO ACTUAL INTERVAL COLUMN WHEN CREATED
+    # UPDATES ALL THE BUTTONS WITH THE CURRENT INTERVALS
     def update_interval_buttons(self):
         if self.db:
-            self.again_label.setText(str(self.row[4]*self.again_interval))
-            self.hard_label.setText(str(self.row[4]*self.hard_interval))
-            self.good_label.setText(str(self.row[4]*self.good_interval))
-            self.easy_label.setText(str(self.row[4]*self.easy_interval))
+            self.again_label.setText(self.button_timeframes(self.row[4]*self.again_interval))
+            self.hard_label.setText(self.button_timeframes(self.row[4]*self.hard_interval))
+            self.good_label.setText(self.button_timeframes(self.row[4]*self.good_interval))
+            self.easy_label.setText(self.button_timeframes(self.row[4]*self.easy_interval))
 
-
-    # Currently bound to the clear button - will likely remove the clear button in the future
+    def button_timeframes(self, timing):
+        if timing <= 60:
+            return str(int(timing)) + ' minutes'
+        elif timing > 60 and timing <= 1440:
+            return '{0:.1f} hours'.format(timing/60)
+        elif timing > 1440:
+            return '{0:.1f} days'.format(timing/60/24)
+    
     def clear_text(self):
         self.Response_bar.clear()
 
@@ -375,20 +399,20 @@ class Ui_MainWindow():
             pass
 
 
-    # BOUND TO THE "NEXT" BUTTON -      
-    def next_click(self):
+    # Used within the again/hard/good/easy buttons - completes everything required to move onto the next question. 
+    def next_click(self, new_date_increment):
         try:        
             self.retrieve_response()
+            self.update_database_next_date(new_date_increment)
             self.clear_text()
             self.answer_box.setText('') 
             self.next_row()
             self.update_interval_buttons()
-                                
             self.questions_label.setText(self.row[2])
             self.normalize_colour()
             self.add_score(self.correct_increment, self.incorrect_increment)
             self.remaining_label.setText(f"Remaining: {self.rowcount - self.correct_count - self.incorrect_count}")
-
+            
             self.update()
             
         except:
@@ -423,7 +447,7 @@ class Ui_MainWindow():
     # BOUND TO "START" BUTTON - initiates the SELECT query and displays the first question - creates the self.row variable
     def begin_questions(self):
         if self.db:
-            self.mycursor.execute("SELECT id, category, question, answer, test FROM questions")
+            self.mycursor.execute("SELECT id, category, question, answer, dateincrement, nextdate FROM questions WHERE nextdate < NOW() ORDER BY nextdate ASC")
             self.row = self.mycursor.fetchone()
             self.answer_box.setText("")
             self.questions_label.setText(self.row[2])
@@ -432,11 +456,13 @@ class Ui_MainWindow():
             self.rowcount = self.mycursor.rowcount
             self.remaining_label.setText(f"Remaining: {self.rowcount}")
             self.reset_score()
+ 
 
        
     def next_row(self):
         if self.db:
             self.row = self.mycursor.fetchone()
+
 
     # TODO
     def get_database_details(self):
@@ -446,6 +472,28 @@ class Ui_MainWindow():
         
         pass
 
+
+    def update_database_next_date(self, new_date_increment):
+        try:
+            self.update_query = "UPDATE questions SET nextdate = DATE_ADD( NOW(), INTERVAL %s MINUTE) WHERE id = %s"
+            self.query_details = (new_date_increment, self.row[0])
+            self.mycursor2.execute(self.update_query, self.query_details)
+            self.db2.commit()
+        except:
+            print("error has occured in Update database next date function")
+            pass    
+
+
+    def update_database_dateincrement(self, button_input):
+        try:
+            self.update_date_increment_query = "UPDATE questions SET dateincrement = %s WHERE id = %s"
+            self.query_details_date_increment = (button_input, self.row[0])
+            self.mycursor2.execute(self.update_date_increment_query, self.query_details_date_increment)
+            self.db2.commit()
+        except:
+            print('dateincrement query problems')
+            pass
+        
             
 
 if __name__ == "__main__":    
